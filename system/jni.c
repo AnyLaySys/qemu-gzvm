@@ -99,19 +99,10 @@ static void input_send(JniInput *event)
     } else if (event->type == INPUT_SCROLL) {
         InputButton v = event->y < 0 ? INPUT_BUTTON_WHEEL_UP :
                                        INPUT_BUTTON_WHEEL_DOWN;
-        InputButton h = event->x < 0 ? INPUT_BUTTON_WHEEL_LEFT :
-                                       INPUT_BUTTON_WHEEL_RIGHT;
-
         if (event->y) {
             qemu_input_queue_btn(console, v, true);
             qemu_input_event_sync();
             qemu_input_queue_btn(console, v, false);
-            qemu_input_event_sync();
-        }
-        if (event->x) {
-            qemu_input_queue_btn(console, h, true);
-            qemu_input_event_sync();
-            qemu_input_queue_btn(console, h, false);
             qemu_input_event_sync();
         }
     } else {
