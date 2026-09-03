@@ -32,17 +32,6 @@ int gzvm_handle_mmio_exit(CPUState *cpu, struct gzvm_vcpu_run *run)
     if (s) {
         gzvm_slots_lock(s);
         gzvm_slot *slot = gzvm_find_slot_by_addr_locked(s, addr);
-#if defined(GZVM_IPA_WORKAROUND)
-        if (!slot && (addr >> 28) == 0x4) {
-            hwaddr corrected = (addr & 0x0FFFFFFF) | 0x04000000;
-            slot = gzvm_find_slot_by_addr_locked(s, corrected);
-            if (slot) {
-                gz_report_once("gzvm: MMIO IPA corrected 0x%" PRIx64
-                                 " to 0x%" PRIx64, addr, corrected);
-                addr = corrected;
-            }
-        }
-#endif
         if (slot && slot->mem) {
             attrs = MEMTXATTRS_UNSPECIFIED;
             slot_mem = slot->mem;
