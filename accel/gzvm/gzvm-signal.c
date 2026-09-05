@@ -52,6 +52,32 @@ void gzvm_signal_update_regions(GZVMState *s)
     }
 }
 
+static void gzvm_signal_diagnostic(int sig, siginfo_t *si, void *ctx)
+{
+    ucontext_t *uc = ctx;
+    char buf[256];
+    int len;
+
+    len = snprintf(buf, sizeof(buf),
+                   "Signal: %d (%s)\n"
+                   "Faulting address: %p\n"
+                   "si_code: %d\n",
+                   sig, sig == SIGSEGV ? "SIGSEGV" :
+                   sig == SIGBUS ? "SIGBUS" : "?", si->si_addr,
+                   si->si_code);
+    if (len > 0) {
+        write(STDERR_FILENO, buf, len);
+    }
+    if (uc) {
+        len = snprintf(buf, sizeof(buf), "PC: 0x%llx\nLR: 0x%llx\n",
+                       (unsigned long long)uc->uc_mcontext.pc,
+                       (unsigned long long)uc->uc_mcontext.regs[30]);
+        if (len > 0) {
+            write(STDERR_FILENO, buf, len);
+        }
+    }
+}
+
 /*
  * SIGBUS handler for demand paging.  Only SIGBUS is meaningful here:
  * SIGSEGV is caught but forwarded to the default handler unless it
@@ -120,6 +146,7 @@ static void gzvm_sigsegv_handler(int sig, siginfo_t *si, void *ctx)
      * Not a gzvm fault or mmap() failed -- restore the default handler
      * and re-raise so the process gets the normal crash behaviour.
      */
+    gzvm_signal_diagnostic(sig, si, ctx);
     {
         struct sigaction dfl = { .sa_handler = SIG_DFL };
         sigaction(sig, &dfl, NULL);
@@ -172,4 +199,3 @@ void gzvm_init_vcpu_sigsegv(void)
     sigaddset(&set, SIGSEGV);
     pthread_sigmask(SIG_UNBLOCK, &set, NULL);
 }
-

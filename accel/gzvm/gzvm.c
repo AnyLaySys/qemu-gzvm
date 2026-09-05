@@ -15,6 +15,29 @@
 #include "qemu/guest-random.h"
 #include "gzvm-internal.h"
 
+void gzvm_embedded_cleanup(void)
+{
+    GZVMState *s;
+    CPUState *cpu;
+    bool unlock;
+
+    if (!gzvm_allowed || !current_accel())
+        return;
+    s = GZVM_STATE(current_accel());
+    qatomic_set(&gzvm_vm_stopped, true);
+    unlock = !bql_locked();
+    if (unlock) bql_lock();
+    CPU_FOREACH(cpu) {
+        if (cpu->created)
+            cpu_remove_sync(cpu);
+    }
+    if (s->slots)
+        gzvm_cleanup_mem_state();
+    if (s->vmfd >= 0) close(s->vmfd);
+    if (s->fd >= 0) close(s->fd);
+    if (unlock) bql_unlock();
+}
+
 static int gzvm_init_vcpu(CPUState *cpu)
 {
     struct GZVCPUState *vcpu = g_new0(struct GZVCPUState, 1);
@@ -38,6 +61,11 @@ static int gzvm_cpu_exec(CPUState *cpu)
 {
     struct gzvm_vcpu_run *run = GZVCPU(cpu)->run;
     int ret;
+
+    if (qatomic_read(&gzvm_vm_stopped)) {
+        qatomic_set(&cpu->halted, 1);
+        return EXCP_INTERRUPT;
+    }
 
     run->immediate_exit = 0;
     bql_unlock();
@@ -105,6 +133,8 @@ static int gzvm_cpu_exec(CPUState *cpu)
     case GZVM_EXIT_DEBUG:
         return EXCP_DEBUG;
     case GZVM_EXIT_SHUTDOWN:
+        qatomic_set(&gzvm_vm_stopped, true);
+        qatomic_set(&cpu->halted, 1);
         if (cpu->cpu_index == 0) {
             qemu_system_shutdown_request(SHUTDOWN_CAUSE_GUEST_SHUTDOWN);
             return EXCP_INTERRUPT;

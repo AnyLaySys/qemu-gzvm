@@ -10,6 +10,9 @@
 #include "linux-headers/linux/gzvm.h"
 #include "gzvm-internal.h"
 
+bool gzvm_vm_stopped;
+static bool gzvm_restart_requested;
+
 int gzvm_handle_mmio_exit(CPUState *cpu, struct gzvm_vcpu_run *run)
 {
     hwaddr addr = run->mmio.phys_addr;
@@ -72,12 +75,21 @@ int gzvm_handle_system_event(CPUState *cpu, struct gzvm_vcpu_run *run)
 {
     switch (run->system_event.type) {
     case GZVM_SYSTEM_EVENT_SHUTDOWN:
+        qatomic_set(&gzvm_vm_stopped, true);
+        qatomic_set(&cpu->halted, 1);
         qemu_system_shutdown_request(SHUTDOWN_CAUSE_GUEST_SHUTDOWN);
         return EXCP_INTERRUPT;
     case GZVM_SYSTEM_EVENT_RESET:
-        qemu_system_reset_request(SHUTDOWN_CAUSE_GUEST_RESET);
+        qatomic_set(&gzvm_vm_stopped, true);
+        qatomic_set(&cpu->halted, 1);
+        if (!qatomic_xchg(&gzvm_restart_requested, true)) {
+            gz_report("gzvm: VCPU%u SYSTEM_RESET", cpu->cpu_index);
+            qemu_system_shutdown_request_with_code(
+                SHUTDOWN_CAUSE_GUEST_RESET, GZVM_VM_RESTART_STATUS);
+        }
         return EXCP_INTERRUPT;
     case GZVM_SYSTEM_EVENT_CRASH:
+        qatomic_set(&gzvm_vm_stopped, true);
         qemu_system_guest_panicked(cpu_get_crash_info(cpu));
         return 0;
     case GZVM_SYSTEM_EVENT_WAKEUP:

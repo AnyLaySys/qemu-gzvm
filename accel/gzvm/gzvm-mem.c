@@ -332,6 +332,13 @@ static MemoryListener gzvm_memory_listener = {
     .commit = gzvm_region_commit,
 };
 
+void gzvm_cleanup_mem_state(void)
+{
+    memory_listener_unregister(&gzvm_io_listener);
+    memory_listener_unregister(&gzvm_ioeventfd_listener);
+    memory_listener_unregister(&gzvm_memory_listener);
+}
+
 static int gzvm_create_vgic_device(GZVMState *s,
                                     int dev_type, uint64_t dev_addr,
                                     uint64_t dev_reg_size,
@@ -371,36 +378,6 @@ static int gzvm_open_device(GZVMState *s)
     }
     s->vmfd = ret;
     return 0;
-}
-
-static void gzvm_probe_caps(GZVMState *s)
-{
-    {
-        uint64_t cap = GZVM_CAP_ARM_VM_IPA_SIZE;
-        int r = gzvm_vm_ioctl(GZVM_CHECK_EXTENSION, &cap);
-        if (r == 0) {
-            gz_report("gzvm: IPA size: %d bits", (int)cap);
-        } else {
-            gz_report("gzvm: IPA size probe failed (r=%d), "
-                        "assuming 40 bits", r);
-        }
-    }
-
-    {
-        static const struct {
-            uint64_t cap;
-            const char *name;
-        } cap_list[] = {
-            { GZVM_CAP_ENABLE_IDLE,          "ENABLE_IDLE" },
-        };
-        for (int i = 0; i < (int)ARRAY_SIZE(cap_list); i++) {
-            uint64_t c = cap_list[i].cap;
-            int r = gzvm_vm_ioctl(GZVM_CHECK_EXTENSION, &c);
-            if (r == 0) {
-                gz_report("gzvm: cap %s = %" PRIu64, cap_list[i].name, c);
-            }
-        }
-    }
 }
 
 static int gzvm_create_vgic_devices(GZVMState *s)
@@ -445,8 +422,6 @@ int gzvm_create_vm(void)
     if (gzvm_open_device(s)) {
         return -1;
     }
-
-    gzvm_probe_caps(s);
 
     s->nr_slots_allocated = 32;
     s->slots = g_new0(gzvm_slot, s->nr_slots_allocated);

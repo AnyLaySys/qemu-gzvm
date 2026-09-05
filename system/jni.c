@@ -13,6 +13,7 @@
 #include "audio/audio.h"
 #include "block/aio.h"
 #include "qemu/main-loop.h"
+#include "system/gzvm.h"
 #include "system/runstate.h"
 #include "system/system.h"
 #include "ui/agl.h"
@@ -398,11 +399,13 @@ static jint jni_run(JNIEnv *env, jobject self, jstring work_dir,
         jni_running = false;
         pthread_mutex_unlock(&jni_lock);
         qemu_cleanup(status);
+        gzvm_embedded_cleanup();
         bql_unlock();
     } else {
         status = jni_exit_status;
         __android_log_print(ANDROID_LOG_ERROR, "QEMU-GZVM",
                             "QEMU requested exit(%d)", status);
+        gzvm_embedded_cleanup();
         if (bql_locked()) {
             bql_unlock();
         }

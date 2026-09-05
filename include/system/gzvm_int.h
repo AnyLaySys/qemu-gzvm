@@ -52,6 +52,8 @@ struct GZVCPUState {
 
 #define GZVCPU(cpu) ((struct GZVCPUState *)(cpu)->accel)
 
+extern bool gzvm_vm_stopped;
+
 int gzvm_create_vm(void);
 int gzvm_start_vm(void);
 int gzvm_vm_ioctl(int type, void *arg);

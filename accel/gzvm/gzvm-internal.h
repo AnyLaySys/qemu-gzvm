@@ -15,6 +15,7 @@ gzvm_slot *gzvm_find_slot_by_addr_locked(GZVMState *s, uint64_t addr);
 void gzvm_install_sigsegv_handler(void);
 void gzvm_init_vcpu_sigsegv(void);
 void gzvm_signal_update_regions(GZVMState *s);
+void gzvm_cleanup_mem_state(void);
 int gzvm_dev_ioctl(GZVMState *s, int type, void *arg);
 void gzvm_ioctl_set_state(GZVMState *s);
 

@@ -17,6 +17,7 @@ extern bool gzvm_allowed;
 
 #define gzvm_enabled() (gzvm_allowed)
 #define GZVM_MSI_SPI_BASE 48
+#define GZVM_VM_RESTART_STATUS 82
 
 /*
  * Whether VIRTIO_RING_F_EVENT_IDX may be offered to guests.  False by default
@@ -47,5 +48,6 @@ int gzvm_arm_set_dtb(uint64_t dtb_start, uint64_t dtb_size);
 void gzvm_set_gic_bases(uint64_t dist_base, uint64_t redist_base,
                         uint64_t redist_size);
 void gzvm_set_ram_base(uint64_t base);
+void gzvm_embedded_cleanup(void);
 
 #endif

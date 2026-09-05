@@ -75,9 +75,7 @@ static int gzvm_set_one_reg(CPUState *cs, uint64_t id, void *source)
 static void gzvm_arch_set_id_regs(CPUState *cs)
 {
     ARMCPU *cpu = ARM_CPU(cs);
-    static bool logged;
     bool warned = false;
-    int pushed = 0;
 
 #define X(NAME, OP0, OP1, CRN, CRM, OP2, MEMBER)                            \
     do {                                                                   \
@@ -96,22 +94,12 @@ static void gzvm_arch_set_id_regs(CPUState *cs)
                                 #NAME, strerror(errno));                   \
                     warned = true;                                         \
                 }                                                          \
-            } else {                                                       \
-                pushed++;                                                  \
-                if (!logged) {                                             \
-                    gz_report("gzvm:   id %s = 0x%016" PRIx64,           \
-                                #NAME, reg);                               \
-                }                                                          \
             }                                                              \
         }                                                                  \
     } while (0);
     GZVM_ID_REG_LIST(X)
 #undef X
 
-    if (!logged) {
-        gz_report("gzvm: programmed %d host ID registers into vcpu", pushed);
-        logged = true;
-    }
 }
 
 int gzvm_arm_set_dtb(uint64_t dtb_start, uint64_t dtb_size)

@@ -240,7 +240,7 @@ static void gzvm_kick_vcpu_thread(CPUState *cpu)
 
 static bool gzvm_vcpu_thread_is_idle(CPUState *cpu)
 {
-    return false;
+    return qatomic_read(&gzvm_vm_stopped);
 }
 
 static void gzvm_accel_ops_class_init(ObjectClass *oc, void *data)
